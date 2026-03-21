@@ -12,7 +12,7 @@ const config = {
     SPLAT_RADIUS: 0.25,
     SPLAT_FORCE: 6000,
     VISCOSITY: 0.3,
-    COLOR_MODE: 'rainbow',
+    COLOR_MODE: 'funforrest',
     BLOOM_INTENSITY: 0.4,
     BLOOM_THRESHOLD: 0.6,
     BLOOM_ITERATIONS: 8,
@@ -759,6 +759,9 @@ function render(target) {
 
 // ── Main Loop ──────────────────────────────────────────────────────────────
 let lastUpdateTime = Date.now();
+let lastInteractionTime = Date.now();
+const IDLE_SPLAT_INTERVAL = 3000;
+let nextIdleSplat = 0;
 
 // Start with some random splats
 multipleSplats(Math.floor(Math.random() * 10) + 5);
@@ -766,7 +769,7 @@ multipleSplats(Math.floor(Math.random() * 10) + 5);
 function update() {
     const now = Date.now();
     let dt = (now - lastUpdateTime) / 1000;
-    dt = Math.min(dt, 0.016666); // cap at 60fps timestep
+    dt = Math.min(dt, 0.016666);
     lastUpdateTime = now;
 
     resizeCanvas();
@@ -777,13 +780,28 @@ function update() {
     }
 
     // Apply pointer input
+    let hasInput = false;
     for (const p of pointers) {
         if (p.moved) {
             p.moved = false;
+            hasInput = true;
             const dx = p.deltaX * config.SPLAT_FORCE;
             const dy = p.deltaY * config.SPLAT_FORCE;
             splat(p.texcoordX, p.texcoordY, dx, dy, p.color);
         }
+    }
+    if (hasInput) lastInteractionTime = now;
+
+    // Idle auto-splats: gentle ambient motion when no interaction
+    if (now - lastInteractionTime > IDLE_SPLAT_INTERVAL && now > nextIdleSplat) {
+        const color = generateColor();
+        color[0] *= 5.0; color[1] *= 5.0; color[2] *= 5.0;
+        const x = 0.2 + Math.random() * 0.6;
+        const y = 0.2 + Math.random() * 0.6;
+        const angle = Math.random() * Math.PI * 2;
+        const force = 200 + Math.random() * 400;
+        splat(x, y, Math.cos(angle) * force, Math.sin(angle) * force, color);
+        nextIdleSplat = now + 1500 + Math.random() * 2500;
     }
 
     step(dt);
