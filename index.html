@@ -6,26 +6,27 @@
 <title>Fluid Simulation</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { overflow: hidden; background: #000; }
-canvas { width: 100vw; height: 100vh; display: block; }
+html, body { overflow: hidden; background: #0b1520; }
+canvas { width: 100vw; height: 100vh; display: block; cursor: crosshair; }
 
 .controls {
     position: fixed;
     top: 12px;
     right: 12px;
-    background: rgba(0,0,0,0.75);
-    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(14,26,40,0.9);
+    border: 1px solid rgba(136,192,208,0.1);
     border-radius: 8px;
     padding: 16px;
-    color: #ccc;
-    font: 13px/1.6 -apple-system, sans-serif;
+    color: #b0dce8;
+    font: 13px/1.6 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     min-width: 220px;
     z-index: 10;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     transition: transform 0.3s ease, opacity 0.3s ease;
     max-height: calc(100vh - 24px);
     overflow-y: auto;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
 }
 .controls.hidden {
     transform: translateX(calc(100% + 20px));
@@ -33,7 +34,7 @@ canvas { width: 100vw; height: 100vh; display: block; }
     pointer-events: none;
 }
 .controls h3 {
-    color: #fff;
+    color: #d0eef5;
     font-size: 14px;
     margin-bottom: 12px;
     letter-spacing: 0.5px;
@@ -48,7 +49,7 @@ canvas { width: 100vw; height: 100vh; display: block; }
     font-size: 12px;
 }
 .control-group label span.val {
-    color: #888;
+    color: #88c0d0;
     font-variant-numeric: tabular-nums;
 }
 input[type="range"] {
@@ -56,7 +57,7 @@ input[type="range"] {
     height: 4px;
     -webkit-appearance: none;
     appearance: none;
-    background: rgba(255,255,255,0.15);
+    background: rgba(136,192,208,0.15);
     border-radius: 2px;
     outline: none;
 }
@@ -65,46 +66,81 @@ input[type="range"]::-webkit-slider-thumb {
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: #fff;
+    background: #88c0d0;
     cursor: pointer;
 }
 select {
     width: 100%;
-    background: rgba(255,255,255,0.1);
-    color: #ccc;
-    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(136,192,208,0.1);
+    color: #b0dce8;
+    border: 1px solid rgba(136,192,208,0.1);
     border-radius: 4px;
     padding: 4px 6px;
     font-size: 12px;
     outline: none;
 }
-.toggle-btn {
+.menu-btn {
     position: fixed;
-    top: 12px;
-    right: 12px;
-    width: 36px;
-    height: 36px;
-    background: rgba(0,0,0,0.5);
-    border: 1px solid rgba(255,255,255,0.15);
+    top: 16px;
+    left: 16px;
+    background: rgba(14,26,40,0.85);
+    border: 1px solid rgba(136,192,208,0.1);
     border-radius: 8px;
-    color: #ccc;
-    font-size: 18px;
+    color: #b0dce8;
+    font: 500 12px/1 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    padding: 10px 14px;
     cursor: pointer;
-    z-index: 9;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    z-index: 11;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+}
+.menu-btn.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+.menu-btn:hover {
+    background: rgba(136,192,208,0.15);
+    border-color: rgba(136,192,208,0.25);
+}
+.controls .ctrl-btn {
+    width: 100%;
+    padding: 8px 10px;
+    background: rgba(136,192,208,0.1);
+    border: 1px solid rgba(136,192,208,0.1);
+    border-radius: 6px;
+    color: #b0dce8;
+    font: 500 12px/1 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    transition: background 0.2s, border-color 0.2s;
+    margin-top: 8px;
+}
+.controls .ctrl-btn:hover {
+    background: rgba(136,192,208,0.15);
+    border-color: rgba(136,192,208,0.25);
+}
+.citation {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(136,192,208,0.1);
+    font-size: 10px;
+    line-height: 1.5;
+    color: #6a96a5;
 }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 
-<button class="toggle-btn" id="toggleBtn" title="Toggle controls">&#9881;</button>
+<button class="menu-btn" id="menuBtn">Menu</button>
 
-<div class="controls" id="controls">
+<div class="controls hidden" id="controls">
     <h3>Fluid Controls</h3>
 
     <div class="control-group">
@@ -150,12 +186,16 @@ select {
     <div class="control-group">
         <label>Color Mode</label>
         <select id="colorMode">
-            <option value="funforrest" selected>FunForrest</option>
+            <option value="polarnight" selected>Polar Night</option>
             <option value="rainbow">Rainbow</option>
             <option value="monochrome">Monochrome</option>
             <option value="neon">Neon</option>
         </select>
     </div>
+
+    <button class="ctrl-btn" id="btnSave">Save</button>
+
+    <div class="citation">Navier-Stokes equations. GPU implementation inspired by Jos Stam, "Stable Fluids" (SIGGRAPH 1999).</div>
 </div>
 
 <script src="fluid.js"></script>

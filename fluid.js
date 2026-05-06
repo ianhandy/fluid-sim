@@ -12,7 +12,7 @@ const config = {
     SPLAT_RADIUS: 0.25,
     SPLAT_FORCE: 6000,
     VISCOSITY: 0.3,
-    COLOR_MODE: 'funforrest',
+    COLOR_MODE: 'polarnight',
     BLOOM_INTENSITY: 0.4,
     BLOOM_THRESHOLD: 0.6,
     BLOOM_ITERATIONS: 8,
@@ -20,17 +20,19 @@ const config = {
     TRANSPARENT: false,
 };
 
-// FunForrest palette
-const FUNFORREST = {
-    bg: [0.141, 0.071, 0.0],       // #241200
-    gold: [0.867, 0.757, 0.396],    // #DDC165
-    lightGold: [1.0, 0.914, 0.639], // #FFE9A3
-    orange: [0.898, 0.349, 0.110],  // #E5591C
+// Polar Night palette
+const POLARNIGHT = {
+    bg: [0.043, 0.082, 0.125],      // #0b1520
+    primary: [0.533, 0.753, 0.816], // #88c0d0
+    light: [0.690, 0.863, 0.910],   // #b0dce8
+    dark: [0.165, 0.353, 0.416],    // #2a5a6a
 };
+// Keep FUNFORREST as alias for backward compat
+const FUNFORREST = POLARNIGHT;
 
 // ── WebGL Setup ────────────────────────────────────────────────────────────
 const canvas = document.getElementById('c');
-const params = { alpha: true, depth: false, stencil: false, antialias: false, preserveDrawingBuffer: false };
+const params = { alpha: true, depth: false, stencil: false, antialias: false, preserveDrawingBuffer: true };
 
 let gl = canvas.getContext('webgl2', params);
 const isWebGL2 = !!gl;
@@ -490,8 +492,8 @@ function correctDeltaY(delta) {
 // ── Color Generation ───────────────────────────────────────────────────────
 function generateColor() {
     const mode = config.COLOR_MODE;
-    if (mode === 'funforrest') {
-        const colors = [FUNFORREST.gold, FUNFORREST.lightGold, FUNFORREST.orange];
+    if (mode === 'polarnight' || mode === 'funforrest') {
+        const colors = [POLARNIGHT.primary, POLARNIGHT.light, POLARNIGHT.dark];
         const c = colors[Math.floor(Math.random() * colors.length)];
         return [c[0] * 0.8, c[1] * 0.8, c[2] * 0.8];
     }
@@ -732,7 +734,7 @@ function applyBloom(source, destination) {
 }
 
 function getBackgroundColor() {
-    if (config.COLOR_MODE === 'funforrest') return FUNFORREST.bg;
+    if (config.COLOR_MODE === 'polarnight' || config.COLOR_MODE === 'funforrest') return POLARNIGHT.bg;
     return [0, 0, 0];
 }
 
@@ -839,11 +841,77 @@ if (colorSelect) {
     });
 }
 
-// Toggle controls panel
-const toggleBtn = document.getElementById('toggleBtn');
+// Menu button + auto-hide UI
+const menuBtn = document.getElementById('menuBtn');
 const controlsPanel = document.getElementById('controls');
-if (toggleBtn && controlsPanel) {
-    toggleBtn.addEventListener('click', () => {
-        controlsPanel.classList.toggle('hidden');
+let uiHideTimer = null;
+let panelOpen = false;
+
+function showMenuBtn() {
+    menuBtn.classList.add('visible');
+    clearTimeout(uiHideTimer);
+    uiHideTimer = setTimeout(() => {
+        if (!panelOpen) menuBtn.classList.remove('visible');
+    }, 2000);
+}
+
+if (menuBtn && controlsPanel) {
+    menuBtn.addEventListener('click', () => {
+        panelOpen = !panelOpen;
+        controlsPanel.classList.toggle('hidden', !panelOpen);
+        if (panelOpen) {
+            menuBtn.classList.add('visible');
+            clearTimeout(uiHideTimer);
+        }
+    });
+
+    // Close panel when clicking canvas
+    canvas.addEventListener('mousedown', () => {
+        if (panelOpen) {
+            panelOpen = false;
+            controlsPanel.classList.add('hidden');
+        }
+    });
+
+    // Auto-hide: show menu button on mouse movement
+    document.addEventListener('mousemove', showMenuBtn);
+    document.addEventListener('touchstart', showMenuBtn);
+
+    // Prevent auto-hide while interacting with controls
+    controlsPanel.addEventListener('mouseenter', () => { clearTimeout(uiHideTimer); });
+    controlsPanel.addEventListener('mouseleave', () => {
+        if (panelOpen) {
+            uiHideTimer = setTimeout(() => {
+                // don't hide while panel is open — only hide menu btn
+            }, 2000);
+        }
+    });
+}
+
+// Save screenshot
+const btnSave = document.getElementById('btnSave');
+if (btnSave) {
+    btnSave.addEventListener('click', () => {
+        // Hide UI, render one frame, capture, restore
+        const wasOpen = panelOpen;
+        menuBtn.classList.remove('visible');
+        controlsPanel.classList.add('hidden');
+        panelOpen = false;
+        requestAnimationFrame(() => {
+            canvas.toBlob(blob => {
+                if (!blob) return;
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'fluid-' + Date.now() + '.png';
+                a.click();
+                URL.revokeObjectURL(url);
+                if (wasOpen) {
+                    panelOpen = true;
+                    controlsPanel.classList.remove('hidden');
+                    menuBtn.classList.add('visible');
+                }
+            }, 'image/png');
+        });
     });
 }
